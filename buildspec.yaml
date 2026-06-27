@@ -1,0 +1,45 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      java: corretto17
+    commands:
+      - echo Installing Maven...
+      - apt-get update && apt-get install -y maven
+
+  pre_build:
+    commands:
+      - echo Replacing placeholders in appspec.json
+      #- sed -i "s|{{backend_blue_target_group_name}}|$backend_blue_target_group_name|g" appspec.json
+      #- sed -i "s|{{backend_green_target_group_name}}|$backend_green_target_group_name|g" appspec.json
+      - sed -i "s|{{task_definition}}|$task_definition|g" appspec.json
+      #- sed -i "s|{{alb_listener_arn}}|$alb_listener_arn|g" appspec.json
+      - echo "Here is the final appspec.json after replacement:"
+      - cat appspec.json
+      - echo Logging in to Amazon ECR...
+      - aws --version
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - REPOSITORY_URI=$REPOSITORY_URI
+      - COMMIT_HASH=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - IMAGE_TAG=${COMMIT_HASH:=latest}
+
+  build:
+    commands:
+      - echo Building the Docker image...
+      - mvn clean package
+      - docker build -t $REPOSITORY_URI:latest .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - echo Pushing the Docker images...
+      - docker push $REPOSITORY_URI:latest
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Writing image definitions file...
+      - printf '[{"name":"backend","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+
+artifacts:
+  files:
+    - appspec.json
+    - imagedefinitions.json
