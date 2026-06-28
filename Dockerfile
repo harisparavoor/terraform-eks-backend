@@ -7,8 +7,8 @@ WORKDIR /app
 RUN yum install -y maven && yum clean all
 
 # Copy project files
-COPY pom.xml .
-COPY src ./src
+
+COPY . .
 
 # Build the application
 RUN mvn clean package -DskipTests
