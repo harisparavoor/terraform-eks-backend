@@ -35,7 +35,7 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 				.permitAll()
 
 				// ✅ IMPORTANT: allow actuator for Kubernetes probes
-				.antMatchers("/actuator/**").permitAll()
+				.antMatchers("/healthz").permitAll()
 
 				.anyRequest().authenticated()
 				.and()
