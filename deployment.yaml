@@ -28,7 +28,7 @@ spec:
               memory: 1Gi
           startupProbe:
             httpGet:
-              path: /
+              path: /actuator/health
               port: 8080
             failureThreshold: 30
             periodSeconds: 10
