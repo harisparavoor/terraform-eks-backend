@@ -27,8 +27,17 @@ public class SecurityConfiguration extends WebSecurityConfigurerAdapter {
 	protected void configure(HttpSecurity http) throws Exception {
 		http
 			.authorizeRequests()
-				.antMatchers("/built/**", "/main.css").permitAll()
-				.anyRequest().authenticated()
+				// Public resources
+           			 .antMatchers()
+              			  "/built/**",
+                		"/main.css",
+
+               			 // EKS health checks
+               			 "/actuator/health",
+                		"/actuator/info"
+                		.permitAll()
+				.anyRequest()
+				.authenticated()
 				.and()
 			.formLogin()
 				.defaultSuccessUrl("/", true)
