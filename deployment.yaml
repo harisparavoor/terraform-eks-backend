@@ -1,66 +1,51 @@
 apiVersion: apps/v1
 kind: Deployment
-
 metadata:
   name: eksbackend
   labels:
     app: eksbackend
-
 spec:
   replicas: 2
-
   selector:
     matchLabels:
       app: eksbackend
-
   template:
     metadata:
       labels:
         app: eksbackend
-
     spec:
       containers:
         - name: eksbackend
-
           image: IMAGE_URI
-
           ports:
             - containerPort: 8080
-
           resources:
             requests:
-              cpu: "200m"
-              memory: "512Mi"
-
+              cpu: 200m
+              memory: 512Mi
             limits:
-              cpu: "500m"
-              memory: "1Gi"
-
+              cpu: 500m
+              memory: 1Gi
           startupProbe:
             httpGet:
-              path: /actuator/health
+              path: /
               port: 8080
-
-            failureThreshold: 60
+            failureThreshold: 30
             periodSeconds: 10
             timeoutSeconds: 5
-
           readinessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30
             timeoutSeconds: 5
             periodSeconds: 15
             failureThreshold: 6
-
           livenessProbe:
             httpGet:
               path: /actuator/health
               port: 8080
-
-            initialDelaySeconds: 180
+            initialDelaySeconds: 60
             timeoutSeconds: 5
             periodSeconds: 30
             failureThreshold: 3
