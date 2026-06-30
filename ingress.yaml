@@ -1,24 +1,38 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
+
 metadata:
-  name: PROJECT_NAME
+  name: eksbackend
+
   annotations:
     kubernetes.io/ingress.class: alb
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/healthcheck-path: /actuator/health
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
     alb.ingress.kubernetes.io/success-codes: "200"
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+
 spec:
   ingressClassName: alb
+
   rules:
     - http:
         paths:
+          # FRONTEND
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: eksfrontend-service
+                port:
+                  number: 80
+
+          # BACKEND
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: PROJECT_NAME-service
+                name: eksbackend-service
                 port:
                   number: 80
