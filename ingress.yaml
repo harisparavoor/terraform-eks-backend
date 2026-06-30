@@ -20,4 +20,4 @@ spec:
               service:
                 name: PROJECT_NAME-service
                 port:
-                  number: 8080
+                  number: 80
