@@ -35,7 +35,7 @@ phases:
   post_build:
     commands:
       - echo "Deploy to EKS"
-      - kubectl apply -f https://raw.githubusercontent.com/aws/eks-charts/main/stable/aws-load-balancer-controller/crds/crds.yaml
+      - kubectl apply -f https://github.com/aws/aws-load-balancer-controller/releases/download/v2.7.2/crds.yaml
       - kubectl apply -f alb-serviceaccount.yaml
       - kubectl apply -f https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.7.2/v2_7_2_full.yaml
       - kubectl apply -f rendered/deployment.yaml -n "$NAMESPACE"
