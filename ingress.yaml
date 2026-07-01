@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 
 metadata:
-  name: eksbackend
+  name: Backend_App
 
   annotations:
     kubernetes.io/ingress.class: alb
@@ -33,6 +33,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: eksbackend-service
+                name: Backend_App-service
                 port:
                   number: 80
