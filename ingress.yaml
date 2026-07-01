@@ -24,7 +24,7 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: eksfrontend-service
+                name: Frontend_App-service
                 port:
                   number: 80
 
