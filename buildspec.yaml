@@ -35,11 +35,10 @@ phases:
   post_build:
     commands:
       - echo "Deploy to EKS"
-      - kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.7.2/config/crd/bases/crds.yaml
-      - kubectl apply -f alb-serviceaccount.yaml
-      - kubectl apply -f https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.7.2/v2_7_2_full.yaml
       - kubectl apply -f rendered/deployment.yaml -n "$NAMESPACE"
       - kubectl apply -f rendered/service.yaml -n "$NAMESPACE"
+      - kubectl apply -f https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.7.2/v2_7_2_full.yaml
+      - kubectl apply -f alb-serviceaccount.yaml
       - kubectl apply -f rendered/ingress.yaml -n "$NAMESPACE"
 
       - kubectl rollout status deployment/"$Backend_App" -n "$NAMESPACE" --timeout=300s
