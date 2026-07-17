@@ -1,0 +1,19 @@
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: backend-app-tgb
+  namespace: default
+  labels:
+    app: backend-app
+    environment: production
+spec:
+  targetGroupARN: Backend-app-tg-arn
+  targetType: ip
+  serviceRef:
+    name: backend-app-service
+    port: 80
+  #networking:
+  #  ingress:
+  #    - from:
+  #      - securityGroup:
+  #          groupId: <ALB_SECURITY_GROUP_ID>  # Optional: Restrict to ALB SG
