@@ -234,7 +234,7 @@ spec:
             - --enable-waf=false
             - --enable-wafv2=false
             - --enable-leader-election=true
-          image: public.ecr.aws/aws-application-networking/aws-load-balancer-controller:v2.6.2
+          image: public.ecr.aws/aws-application-networking/aws-load-balancer-controller:v2.7.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
