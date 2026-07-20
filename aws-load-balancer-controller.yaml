@@ -235,7 +235,7 @@ spec:
             - --enable-wafv2=false
             - --enable-leader-election=true
             - --webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
-            - --webhook-port=9443
+            - --webhook-bind-port=9443
           image: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller:v2.7.2
           imagePullPolicy: IfNotPresent
           livenessProbe:
