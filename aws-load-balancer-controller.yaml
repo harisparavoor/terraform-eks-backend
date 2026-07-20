@@ -234,9 +234,13 @@ spec:
             - --enable-waf=false
             - --enable-wafv2=false
             - --enable-leader-election=true
+            - --webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
+            - --webhook-cert-file=tls.crt
+            - --webhook-key-file=tls.key
+            - --webhook-bind-port=9443
             #- --webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
             #- --webhook-bind-port=9443
-            - --disable-webhook
+            # - --disable-webhook
           image: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller:v2.5.4
           imagePullPolicy: IfNotPresent
           livenessProbe:
