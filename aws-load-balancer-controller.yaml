@@ -226,10 +226,10 @@ spec:
     spec:
       containers:
         - args:
-            - --cluster-name=<CLUSTER_NAME>
+            - --cluster-name=CLUSTER_NAME
             - --ingress-class=alb
-            - --aws-vpc-id=<VPC_ID>
-            - --aws-region=<AWS_REGION>
+            - --aws-vpc-id=VPC_ID
+            - --aws-region=AWS_REGION
             - --enable-shield=false
             - --enable-waf=false
             - --enable-wafv2=false
@@ -326,7 +326,7 @@ metadata:
   name: aws-load-balancer-controller
   namespace: kube-system
   annotations:
-    eks.amazonaws.com/role-arn: <ALB_CONTROLLER_ROLE_ARN>
+    eks.amazonaws.com/role-arn: ALB_CONTROLLER_ROLE_ARN
 ---
 # Source: aws-load-balancer-controller/templates/clusterrole.yaml
 # ClusterRole for AWS Load Balancer Controller
