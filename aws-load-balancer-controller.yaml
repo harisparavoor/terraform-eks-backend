@@ -238,10 +238,7 @@ spec:
             - --webhook-cert-file=tls.crt
             - --webhook-key-file=tls.key
             - --webhook-bind-port=9443
-            #- --webhook-cert-dir=/tmp/k8s-webhook-server/serving-certs
-            #- --webhook-bind-port=9443
-            # - --disable-webhook
-          image: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller:v2.7.2
+          image: 602401143452.dkr.ecr.us-east-1.amazonaws.com/amazon/aws-load-balancer-controller:v2.5.4
           imagePullPolicy: IfNotPresent
           livenessProbe:
             failureThreshold: 10
@@ -257,6 +254,9 @@ spec:
           ports:
             - containerPort: 61779
               name: metrics
+              protocol: TCP
+            - containerPort: 9443
+              name: webhook-server
               protocol: TCP
           readinessProbe:
             failureThreshold: 10
@@ -285,6 +285,9 @@ spec:
           volumeMounts:
             - mountPath: /tmp
               name: tmp
+            - mountPath: /tmp/k8s-webhook-server/serving-certs
+              name: webhook-certs
+              readOnly: true
             - mountPath: /etc/ssl/certs
               name: ca-certificates
               readOnly: true
@@ -304,8 +307,9 @@ spec:
       volumes:
         - emptyDir: {}
           name: tmp
-        - emptyDir: {}
-          name: webhook-certs
+        - name: webhook-certs
+          secret:
+            secretName: aws-load-balancer-webhook-tls
         - hostPath:
             path: /etc/ssl/certs
             type: DirectoryOrCreate
@@ -351,6 +355,14 @@ rules:
       - list
       - patch
       - update
+      - watch
+  - apiGroups:
+      - ""
+    resources:
+      - nodes
+    verbs:
+      - get
+      - list
       - watch
   - apiGroups:
       - ""
@@ -623,3 +635,172 @@ metadata:
   name: alb
 spec:
   controller: ingress.k8s.aws/alb
+---
+# Source: aws-load-balancer-controller/templates/webhook-cert-setup.yaml
+# One-shot Job that generates a self-signed cert for the webhook server,
+# stores it in a Secret, and injects the caBundle into both webhook
+# configurations. Runs as part of this same manifest so no separate
+# script/step is needed in the pipeline.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: alb-webhook-cert-setup
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: alb-webhook-cert-setup
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+rules:
+  - apiGroups:
+      - ""
+    resources:
+      - secrets
+    verbs:
+      - get
+      - create
+      - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: alb-webhook-cert-setup
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: alb-webhook-cert-setup
+subjects:
+  - kind: ServiceAccount
+    name: alb-webhook-cert-setup
+    namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: alb-webhook-cert-setup
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+rules:
+  - apiGroups:
+      - admissionregistration.k8s.io
+    resources:
+      - mutatingwebhookconfigurations
+      - validatingwebhookconfigurations
+    verbs:
+      - get
+      - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: alb-webhook-cert-setup
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: alb-webhook-cert-setup
+subjects:
+  - kind: ServiceAccount
+    name: alb-webhook-cert-setup
+    namespace: kube-system
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: alb-webhook-cert-setup
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-load-balancer-controller
+    app.kubernetes.io/component: webhook-cert-setup
+spec:
+  backoffLimit: 5
+  ttlSecondsAfterFinished: 300
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: aws-load-balancer-controller
+        app.kubernetes.io/component: webhook-cert-setup
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: alb-webhook-cert-setup
+      containers:
+        - name: cert-setup
+          image: alpine/k8s:1.28.13
+          command:
+            - /bin/sh
+            - -ec
+            - |
+              NAMESPACE="kube-system"
+              SECRET_NAME="aws-load-balancer-webhook-tls"
+              SVC="aws-load-balancer-webhook"
+              MUT_WH="aws-load-balancer-webhook"
+              VAL_WH="aws-load-balancer-webhook"
+
+              which openssl >/dev/null 2>&1 || apk add --no-cache openssl
+
+              WORKDIR=$(mktemp -d)
+              cd "$WORKDIR"
+
+              echo "==> Waiting for webhook configurations to exist"
+              until kubectl get mutatingwebhookconfiguration "${MUT_WH}" >/dev/null 2>&1 \
+                 && kubectl get validatingwebhookconfiguration "${VAL_WH}" >/dev/null 2>&1; do
+                echo "    not found yet, retrying in 3s..."
+                sleep 3
+              done
+
+              if kubectl get secret "${SECRET_NAME}" -n "${NAMESPACE}" >/dev/null 2>&1; then
+                echo "==> Secret ${SECRET_NAME} already exists, reusing its cert for caBundle"
+                kubectl get secret "${SECRET_NAME}" -n "${NAMESPACE}" -o jsonpath='{.data.tls\.crt}' | base64 -d > tls.crt
+              else
+                echo "==> Generating self-signed webhook cert"
+                openssl req -x509 -newkey rsa:2048 -nodes -days 3650 \
+                  -keyout tls.key -out tls.crt \
+                  -subj "/CN=${SVC}.${NAMESPACE}.svc" \
+                  -addext "subjectAltName=DNS:${SVC}.${NAMESPACE}.svc,DNS:${SVC}.${NAMESPACE}.svc.cluster.local"
+
+                echo "==> Creating Secret ${SECRET_NAME}"
+                kubectl create secret generic "${SECRET_NAME}" \
+                  -n "${NAMESPACE}" \
+                  --from-file=tls.crt=tls.crt \
+                  --from-file=tls.key=tls.key
+              fi
+
+              CA_BUNDLE=$(base64 -w0 tls.crt)
+
+              echo "==> Patching caBundle into MutatingWebhookConfiguration/${MUT_WH}"
+              MUT_COUNT=$(kubectl get mutatingwebhookconfiguration "${MUT_WH}" -o jsonpath='{.webhooks[*].name}' | wc -w)
+              PATCH="["
+              i=0
+              while [ "$i" -lt "$MUT_COUNT" ]; do
+                PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/webhooks/${i}/clientConfig/caBundle\",\"value\":\"${CA_BUNDLE}\"},"
+                i=$((i + 1))
+              done
+              PATCH="${PATCH%,}]"
+              kubectl patch mutatingwebhookconfiguration "${MUT_WH}" --type=json -p="${PATCH}"
+
+              echo "==> Patching caBundle into ValidatingWebhookConfiguration/${VAL_WH}"
+              VAL_COUNT=$(kubectl get validatingwebhookconfiguration "${VAL_WH}" -o jsonpath='{.webhooks[*].name}' | wc -w)
+              PATCH="["
+              i=0
+              while [ "$i" -lt "$VAL_COUNT" ]; do
+                PATCH="${PATCH}{\"op\":\"add\",\"path\":\"/webhooks/${i}/clientConfig/caBundle\",\"value\":\"${CA_BUNDLE}\"},"
+                i=$((i + 1))
+              done
+              PATCH="${PATCH%,}]"
+              kubectl patch validatingwebhookconfiguration "${VAL_WH}" --type=json -p="${PATCH}"
+
+              echo "==> Done. Webhook TLS secret and caBundle are in place."
