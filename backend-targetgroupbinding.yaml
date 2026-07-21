@@ -4,13 +4,13 @@ metadata:
   name: backend-app-tgb
   namespace: default
   labels:
-    app: backend-app
+    app: Backend_App
     environment: production
 spec:
   targetGroupARN: Backend-App-Tg-Arn
   targetType: ip
   serviceRef:
-    name: backend-app-service
+    name: Backend_App-service
     port: 80
   #networking:
   #  ingress:
