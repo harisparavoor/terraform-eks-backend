@@ -261,7 +261,7 @@ spec:
           readinessProbe:
             failureThreshold: 10
             httpGet:
-              path: /readyz
+              path: /healthz
               port: 61779
               scheme: HTTP
             initialDelaySeconds: 30
