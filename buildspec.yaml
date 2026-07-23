@@ -29,7 +29,7 @@ phases:
 
       - echo "Push image"
       - docker push "$REPOSITORY_URI:$IMAGE_TAG"
-      #- docker push "$REPOSITORY_URI:latest"
+      - docker push "$REPOSITORY_URI:latest"
 
       - sed -i "s|CLUSTER_NAME|$CLUSTER_NAME|g" aws-load-balancer-controller.yaml
       - sed -i "s|VPC_ID|$VPC_ID|g" aws-load-balancer-controller.yaml
