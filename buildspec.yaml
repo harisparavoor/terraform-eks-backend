@@ -23,8 +23,13 @@ phases:
 
   build:
     commands:
+      - echo "Build Docker image"
       - docker build -t "$REPOSITORY_URI:$IMAGE_TAG" .
+      - docker tag $REPOSITORY_URI:latest $REPOSITORY_URI:$IMAGE_TAG
+
+      - echo "Push image"
       - docker push "$REPOSITORY_URI:$IMAGE_TAG"
+      #- docker push "$REPOSITORY_URI:latest"
 
       - sed -i "s|CLUSTER_NAME|$CLUSTER_NAME|g" aws-load-balancer-controller.yaml
       - sed -i "s|VPC_ID|$VPC_ID|g" aws-load-balancer-controller.yaml
